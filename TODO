@@ -1,0 +1,3 @@
+* Wait for ghc patch to Cmm parser
+* Wait for Bodigrim's PR on atomic-counter
+* Report segfaults on atomic-counter benchmarks
