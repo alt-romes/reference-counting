@@ -22,8 +22,6 @@ import qualified Control.Concurrent.Counter as Counter
 import System.IO.Linear as Linear
 import qualified Unsafe.Linear as Unsafe
 
-import Control.Monad.IO.Class.Linear
-
 -- TODO: This is already using atomic-counter, but this is not good enough.
 -- Check out the TODO file.
 
@@ -32,7 +30,7 @@ import Control.Monad.IO.Class.Linear
 -- | A reference counted value
 data RefC a where
   -- TODO: Be sure to use atomic w IORef
-  RefCounted :: (∀ lm. MonadIO lm => a ⊸ lm ()) -- ^ Function to free resource
+  RefCounted :: (a ⊸ Linear.IO ()) -- ^ Function to free resource
              -> !Counter.Counter  -- ^ The counter associated to this counted reference
              -- ⊸ !(IORef a)        -- ^ The actual reference to the value
              -> a                    -- ^ The actual value
@@ -41,20 +39,17 @@ data RefC a where
 -- instance Prelude.Functor RefC where
 --   fmap f (RefCounted freeC c x) = (RefCounted (freeC . f) c (f x))
 
--- TODO: Probably we want RefC to be parametrised over the linear monad, and require that users define a type synonym
-
-new :: MonadIO lm
-    => (∀ lm'. MonadIO lm' => a ⊸ lm' ())
+new :: (a ⊸ Linear.IO ())
     -> a
-    ⊸ lm (RefC a)
+    ⊸ Linear.IO (RefC a)
 new freeC x = Linear.do
-  Ur c <- liftSystemIOU $ Counter.new 1
+  Ur c <- fromSystemIOU $ Counter.new 1
   -- Ur refX <- Unsafe.toLinear newIORef x
   pure $ RefCounted freeC c x
 
-share :: MonadIO lm => RefC a ⊸ lm (RefC a, RefC a)
+share :: RefC a ⊸ Linear.IO (RefC a, RefC a)
 share = Unsafe.toLinear $ \rc@(RefCounted _ counter _) -> Linear.do
-  Ur _ <- liftSystemIOU (Counter.add counter 1) -- increment reference count
+  Ur _ <- fromSystemIOU (Counter.add counter 1) -- increment reference count
   -- It's safe to return two references to the pointer because we've
   -- incremented the reference count. Both references must be used linearly
   -- *and* we decrement the reference count with every use except for the last
@@ -73,9 +68,9 @@ share = Unsafe.toLinear $ \rc@(RefCounted _ counter _) -> Linear.do
 -- * Otherwise, if this isn't the last reference to the value, the freeing
 -- function will be a no-op, but still must be called on the value.
 --
-get :: MonadIO lm => RefC a ⊸ lm (a, a ⊸ lm ())
+get :: RefC a ⊸ Linear.IO (a, a ⊸ Linear.IO ())
 get (RefCounted freeC counter x) = Linear.do
-  Ur oldCount <- liftSystemIOU (Counter.sub counter 1)
+  Ur oldCount <- fromSystemIOU (Counter.sub counter 1)
   if oldCount == 1
      then Linear.do
        -- This is the last reference to the resource, free it.
@@ -91,14 +86,16 @@ refcoerce (RefCounted freeC counter x) = RefCounted (freeC . lcoerce) counter (l
 modify :: (a ⊸ a) ⊸ RefC a ⊸ RefC a
 modify f (RefCounted freeC counter x) = RefCounted freeC counter (f x)
 
-modifyM :: MonadIO lm => (a ⊸ lm a) ⊸ RefC a ⊸ lm (RefC a)
+modifyM :: (a ⊸ Linear.IO a) ⊸ RefC a ⊸ Linear.IO (RefC a)
 modifyM f (RefCounted freeC counter x) = RefCounted freeC counter <$> f x
 
-modify' :: (∀ lm. MonadIO lm => b ⊸ lm ()) -> (a ⊸ b) ⊸ RefC a ⊸ RefC b
+modify' :: (b ⊸ Linear.IO ()) -> (a ⊸ b) ⊸ RefC a ⊸ RefC b
 modify' freeC f (RefCounted _ counter x) = RefCounted freeC counter (f x)
+
 
 lcoerce :: Coercible a b => a ⊸ b
 lcoerce = Unsafe.toLinear coerce
+
 
 -- TODO Interface over Linear.MonadIO
 
