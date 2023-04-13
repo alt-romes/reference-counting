@@ -1,22 +1,18 @@
-{-# LANGUAGE UnicodeSyntax, LinearTypes, QualifiedDo, NoImplicitPrelude, BlockArguments #-}
+{-# LANGUAGE DeriveFunctor, UnicodeSyntax, LinearTypes, QualifiedDo, NoImplicitPrelude, BlockArguments #-}
 -- | Simple reference counting with linear types as described in Advanced
 -- Topics in Types and Programming Languages Chapter 1
 module Data.Counted
   ( RefC
   , new
   , share
-  , free
-  , set
-  , modify
   , get
+  , modify
   ) where
 
 -- import qualified System.IO.Resource.Linear as Linear
-import Data.IORef (IORef)
-import qualified Data.IORef
 import Control.Functor.Linear as Linear hiding (get, modify)
+import qualified Data.Functor.Linear as Data
 import Prelude.Linear
-import qualified Prelude
 import qualified Control.Concurrent.Counter as Counter
 import System.IO.Linear as Linear
 import qualified Unsafe.Linear as Unsafe
@@ -24,23 +20,27 @@ import qualified Unsafe.Linear as Unsafe
 -- TODO: This is already using atomic-counter, but this is not good enough.
 -- Check out the TODO file.
 
+-- TODO: Interface with Linear.MonadIO
+
 -- | A reference counted value
 data RefC a where
   -- TODO: Be sure to use atomic w IORef
   RefCounted :: (a ⊸ Linear.IO ()) -- ^ Function to free resource
-             ⊸ !Counter.Counter  -- ^ The counter associated to this counted reference
+             -> !Counter.Counter  -- ^ The counter associated to this counted reference
              -- ⊸ !(IORef a)        -- ^ The actual reference to the value
-             ⊸ a                    -- ^ The actual reference to the value
+             -> a                    -- ^ The actual value
              ⊸ RefC a
+
+-- instance Prelude.Functor RefC where
+--   fmap f (RefCounted freeC c x) = (RefCounted (freeC . f) c (f x))
 
 new :: (a ⊸ Linear.IO ())
     ⊸ a
     ⊸ Linear.IO (RefC a)
-new freeC x = Linear.do
+new = Unsafe.toLinear $ \freeC x -> Linear.do
   Ur c <- fromSystemIOU $ Counter.new 1
   -- Ur refX <- Unsafe.toLinear newIORef x
   pure $ RefCounted freeC c x
-
 
 share :: RefC a ⊸ Linear.IO (RefC a, RefC a)
 share = Unsafe.toLinear $ \rc@(RefCounted _ counter _) -> Linear.do
@@ -51,28 +51,31 @@ share = Unsafe.toLinear $ \rc@(RefCounted _ counter _) -> Linear.do
   -- through @free@, ensuring the resource is freed exactly one.
   pure (rc, rc)
 
-free :: RefC a ⊸ Linear.IO ()
-free = Unsafe.toLinear $ \(RefCounted freeC counter x) -> Linear.do
+-- | This function returns a value that is reference counted in a linear pair
+-- with a function to free the linear value. Since both the value and freeing
+-- function must be consumed linearly, it is guaranteed that the returned
+-- function is the one used to free the resource.
+--
+-- The freeing function can be one of two things:
+-- * If the returned value was the last reference, the function is the one
+-- passed as an argument to 'new'
+--
+-- * Otherwise, if this isn't the last reference to the value, the freeing
+-- function will be a no-op.
+--
+get :: RefC a ⊸ Linear.IO (a, a ⊸ Linear.IO ())
+get (RefCounted freeC counter x) = Linear.do
   Ur oldCount <- fromSystemIOU (Counter.sub counter 1)
   if oldCount == 1
-     -- This is the last reference to the resource, free it.
      then Linear.do
-       -- Ur x <- Unsafe.toLinear readIORef refX
-       freeC x
+       -- This is the last reference to the resource, free it.
+       pure (x, freeC)
      else
       -- This is not the last reference, do nothing else.
-      pure ()
+      pure (x, Unsafe.toLinear2 const (pure ()))
 
-set :: a ⊸ RefC a ⊸ Linear.IO (RefC a)
-set = Unsafe.toLinear2 $ \newx (RefCounted freeC counter _) -> fromSystemIO do
-  -- () <- Data.IORef.atomicWriteIORef refX x
-  Prelude.pure $ RefCounted freeC counter newx
+modify :: (a ⊸ a) ⊸ RefC a ⊸ RefC a
+modify f (RefCounted freeC counter x) = RefCounted freeC counter (f x)
 
-modify :: (a -> a) ⊸ RefC a ⊸ Linear.IO (RefC a)
-modify = Unsafe.toLinear2 $ \f (RefCounted freeC counter x) -> fromSystemIO do
-  -- () <- Data.IORef.atomicModifyIORef' refX ((,()) Prelude.. f)
-  Prelude.pure $ RefCounted freeC counter (f x)
-
-get :: RefC a ⊸ Linear.IO a
-get = Unsafe.toLinear $ \(RefCounted _ _ x) -> pure x
+-- TODO: Modify that also takes a new free function so that modification can change types (a ⊸ b)
 
