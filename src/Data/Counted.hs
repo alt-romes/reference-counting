@@ -7,6 +7,8 @@ module Data.Counted
   , share
   , get
 
+  , Data.Counted.forget
+
   , modify
   , modifyM
   , modify'
@@ -73,6 +75,12 @@ share = Unsafe.toLinear $ \rc@(RefCounted _ counter _) -> Linear.do
 -- * Otherwise, if this isn't the last reference to the value, the freeing
 -- function will be a no-op, but still must be called on the value.
 --
+-- Usage:
+-- @
+-- (x, cleanup) <- Counted.get ref
+-- x' <- useSomehow x
+-- cleanup x'
+-- @
 get :: MonadIO lm => RefC a ⊸ lm (a, a ⊸ lm ())
 get (RefCounted freeC counter x) = Linear.do
   Ur oldCount <- liftSystemIOU (Counter.sub counter 1)
@@ -84,6 +92,11 @@ get (RefCounted freeC counter x) = Linear.do
       -- This is not the last reference, do nothing else.
       pure (x, Unsafe.toLinear2 const (pure ()))
 
+-- Forget the existence of a linear resource, freeing it if necessary
+forget :: MonadIO lm => RefC a ⊸ lm ()
+forget (RefCounted freeC counter x) = Linear.do
+  Ur _ <- liftSystemIOU (Counter.sub counter 1)
+  freeC x
 
 refcoerce :: Coercible a b => RefC a ⊸ RefC b
 refcoerce (RefCounted freeC counter x) = RefCounted (freeC . lcoerce) counter (lcoerce x)
