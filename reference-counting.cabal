@@ -59,10 +59,11 @@ library
     import:           warnings
 
     -- Modules exported by the library.
-    exposed-modules:  Data.Counted
+    exposed-modules:  Data.Counted,
+                      Data.Counted.Unsafe
 
     -- Modules included in this library but not exported.
-    -- other-modules:
+    other-modules:    Data.Counted.Internal
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

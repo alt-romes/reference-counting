@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, UnicodeSyntax, LinearTypes, QualifiedDo, NoImplicitPrelude, BlockArguments #-}
+{-# LANGUAGE UnicodeSyntax, LinearTypes, QualifiedDo, NoImplicitPrelude, BlockArguments #-}
 -- | Simple reference counting with linear types as described in Advanced
 -- Topics in Types and Programming Languages Chapter 1
 module Data.Counted
@@ -18,34 +18,30 @@ module Data.Counted
 import Data.Coerce
 -- import qualified System.IO.Resource.Linear as Linear
 import Control.Functor.Linear as Linear hiding (get, modify)
-import qualified Data.Functor.Linear as Data
 import Prelude.Linear
 import qualified Control.Concurrent.Counter as Counter
-import System.IO.Linear as Linear
 import qualified Unsafe.Linear as Unsafe
 
+import Data.Functor.Identity
+
 import Control.Monad.IO.Class.Linear
+
+import Data.Counted.Internal
+
+-- TODO: Move to own package, like StateVar but linear?
+-- class Reference ref where
+--   refget :: Monad.IO lm => ref a ⊸ lm a
+  -- modify :: a ⊸ ref () ⊸ ref a
+
+-- instance Reference Identity where
+--   refget (Identity x) = x
 
 -- TODO: This is already using atomic-counter, but this is not good enough.
 -- Check out the TODO file.
 
--- TODO: Interface with Linear.MonadIO
-
--- | A reference counted value
-data RefC a where
-  -- TODO: Be sure to use atomic w IORef
-  RefCounted :: (∀ lm. MonadIO lm => a ⊸ lm ()) -- ^ Function to free resource
-             -> !Counter.Counter  -- ^ The counter associated to this counted reference
-             -- ⊸ !(IORef a)        -- ^ The actual reference to the value
-             -> a                    -- ^ The actual value
-             ⊸ RefC a
-
--- instance Prelude.Functor RefC where
---   fmap f (RefCounted freeC c x) = (RefCounted (freeC . f) c (f x))
-
 -- TODO: Probably we want RefC to be parametrised over the linear monad, and require that users define a type synonym
 
-new :: MonadIO lm
+new :: (MonadIO lm) -- , Reference ref)
     => (∀ lm'. MonadIO lm' => a ⊸ lm' ())
     -> a
     ⊸ lm (RefC a)
@@ -113,6 +109,6 @@ modify' freeC f (RefCounted _ counter x) = RefCounted freeC counter (f x)
 lcoerce :: Coercible a b => a ⊸ b
 lcoerce = Unsafe.toLinear coerce
 
--- TODO Interface over Linear.MonadIO
+-- TODO: What about refcounted data structures including other refcounted structures? Wouldn't we need to update all children +1? ...
 
 
