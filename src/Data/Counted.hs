@@ -1,6 +1,6 @@
-{-# LANGUAGE UnicodeSyntax, LinearTypes, QualifiedDo, NoImplicitPrelude, BlockArguments #-}
--- | Simple reference counting with linear types as described in Advanced
--- Topics in Types and Programming Languages Chapter 1
+{-# LANGUAGE UnicodeSyntax, LinearTypes, QualifiedDo, NoImplicitPrelude, BlockArguments, ImpredicativeTypes #-}
+-- | Simple reference counting with linear types inspired by Advanced Topics in
+-- Types and Programming Languages Chapter 1
 module Data.Counted
   ( RefC
   , new
@@ -9,10 +9,12 @@ module Data.Counted
 
   , Data.Counted.forget
 
+  , useM
+
   , modify
   , modifyM
   , modify'
-  , refcoerce
+  -- , refcoerce
   ) where
 
 import Data.Coerce
@@ -27,6 +29,7 @@ import Data.Functor.Identity
 import Control.Monad.IO.Class.Linear
 
 import Data.Counted.Internal
+import qualified Data.Counted.Unsafe as Unsafe.Counted
 
 -- TODO: Move to own package, like StateVar but linear?
 -- class Reference ref where
@@ -39,9 +42,15 @@ import Data.Counted.Internal
 -- TODO: This is already using atomic-counter, but this is not good enough.
 -- Check out the TODO file.
 
--- TODO: Probably we want RefC to be parametrised over the linear monad, and require that users define a type synonym
+-- TODO: Probably we want RefC to be parametrised over the linear monad, and require that users define a type synonym, like type RefC = RefC' Renderer
+
+
+-- TOOD: IT'S CRUCIAL WE MAKE SURE STRUCTURES WITH SUB-REF-COUNTED STRUCTURES
+-- ARE UPDATED ON SHARE
+-- For now, the invariant is reference counted structures CANNOT contain other reference counted structures.
 
 new :: (MonadIO lm) -- , Reference ref)
+    => Counted a
     => (∀ lm'. MonadIO lm' => a ⊸ lm' ())
     -> a
     ⊸ lm (RefC a)
@@ -51,13 +60,20 @@ new freeC x = Linear.do
   pure $ RefCounted freeC c x
 
 share :: MonadIO lm => RefC a ⊸ lm (RefC a, RefC a)
-share = Unsafe.toLinear $ \rc@(RefCounted _ counter _) -> Linear.do
+share = Unsafe.toLinear $ \rc@(RefCounted _ counter x) -> Linear.do
   Ur _ <- liftSystemIOU (Counter.add counter 1) -- increment reference count
-  -- It's safe to return two references to the pointer because we've
-  -- incremented the reference count. Both references must be used linearly
-  -- *and* we decrement the reference count with every use except for the last
-  -- through @free@, ensuring the resource is freed exactly one.
-  pure (rc, rc)
+
+  let cfs = countedFields x
+
+  traverse' (Unsafe.toLinear $ \y -> Unsafe.Counted.inc y) cfs >>=
+    Unsafe.toLinear (\_ -> -- We can forget the references since we were just unsafely incrementing them all
+
+      -- It's safe to return two references to the pointer because we've
+      -- incremented the reference count of this and and all reference counted
+      -- fields. Both references must be used linearly *and* we decrement the
+      -- reference count with every use except for the last through @free@,
+      -- ensuring the resource is freed exactly one.
+      pure (rc, rc))
 
 -- | This function returns a value that is reference counted in a linear pair
 -- with a function to free the linear value. Since both the value and freeing
@@ -94,8 +110,8 @@ forget (RefCounted freeC counter x) = Linear.do
   Ur _ <- liftSystemIOU (Counter.sub counter 1)
   freeC x
 
-refcoerce :: Coercible a b => RefC a ⊸ RefC b
-refcoerce (RefCounted freeC counter x) = RefCounted (freeC . lcoerce) counter (lcoerce x)
+-- refcoerce :: Coercible a b => RefC a ⊸ RefC b
+-- refcoerce (RefCounted freeC counter x) = RefCounted (freeC . lcoerce) counter (lcoerce x)
 
 modify :: (a ⊸ a) ⊸ RefC a ⊸ RefC a
 modify f (RefCounted freeC counter x) = RefCounted freeC counter (f x)
@@ -103,8 +119,17 @@ modify f (RefCounted freeC counter x) = RefCounted freeC counter (f x)
 modifyM :: MonadIO lm => (a ⊸ lm a) ⊸ RefC a ⊸ lm (RefC a)
 modifyM f (RefCounted freeC counter x) = RefCounted freeC counter <$> f x
 
-modify' :: (∀ lm. MonadIO lm => b ⊸ lm ()) -> (a ⊸ b) ⊸ RefC a ⊸ RefC b
+modify' :: Counted b => (∀ lm. MonadIO lm => b ⊸ lm ()) -> (a ⊸ b) ⊸ RefC a ⊸ RefC b
 modify' freeC f (RefCounted _ counter x) = RefCounted freeC counter (f x)
+
+-- | Use a reference counted value in an action that uses that value linearly
+-- without destroying it.
+--
+-- The value with the same reference count will be returned together with a
+-- byproduct of the linear computation.
+useM :: MonadIO m
+     => RefC a ⊸ (a ⊸ m (a, b)) ⊸ m (RefC a, b)
+useM (RefCounted freeC counter x) f = f x >>= \(a,b) -> pure (RefCounted freeC counter a, b)
 
 lcoerce :: Coercible a b => a ⊸ b
 lcoerce = Unsafe.toLinear coerce

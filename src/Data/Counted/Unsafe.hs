@@ -14,7 +14,7 @@ import qualified Control.Concurrent.Counter as Counter
 
 import Control.Monad.IO.Class.Linear
 
-import Data.Counted
+-- import Data.Counted
 import Data.Counted.Internal
 
 

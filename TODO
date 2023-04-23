@@ -1,3 +1,5 @@
-* Wait for ghc patch to Cmm parser
-* Wait for Bodigrim's PR on atomic-counter
-* Report segfaults on atomic-counter benchmarks
+[x] Wait for ghc patch to Cmm parser
+[x] Wait for Bodigrim's PR on atomic-counter
+[x] Report segfaults on atomic-counter benchmarks
+[ ] Use Unlifted Counter instead: https://hackage.haskell.org/package/atomic-counter-0.1.1/docs/Control-Concurrent-Counter-Unlifted.html
+
