@@ -19,7 +19,7 @@ import Data.Counted.Internal
 
 
 -- | Unsafely increment the counter of some reference counted structure.
-inc :: MonadIO m => RefC a ⊸ m (RefC a)
+inc :: MonadIO m => RefC' m' a ⊸ m (RefC' m' a)
 inc (RefCounted f counter a) = Linear.do
   Ur _ <- liftSystemIOU (Counter.add counter 1) -- increment reference count
   pure (RefCounted f counter a)
