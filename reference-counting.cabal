@@ -69,7 +69,11 @@ library
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base >=4.17.0.0, linear-base, atomic-counter
+    build-depends:    base >=4.17.0.0,
+                      linear-base,
+                      atomic-counter,
+                      -- Only for instances of Countable
+                      containers
 
     -- Directories containing source files.
     hs-source-dirs:   src

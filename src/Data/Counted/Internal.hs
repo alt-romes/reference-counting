@@ -2,7 +2,9 @@
 {-# LANGUAGE ImpredicativeTypes, UnicodeSyntax, LinearTypes, QualifiedDo, NoImplicitPrelude, BlockArguments #-}
 module Data.Counted.Internal where
 
+import qualified Prelude
 import Prelude.Linear
+import qualified Data.IntMap as IM
 import qualified Control.Concurrent.Counter as Counter
 import Control.Monad.IO.Class.Linear
 
@@ -32,4 +34,7 @@ class Counted a where
 
 instance (Counted a, Counted b) => Counted (a,b) where
   countedFields (x,y) = countedFields x ++ countedFields y
+
+instance Counted a => Counted (IM.IntMap a) where
+  countedFields = Prelude.foldMap countedFields
 
