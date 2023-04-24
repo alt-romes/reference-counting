@@ -16,6 +16,7 @@ module Data.Counted
   , modify'
   -- , refcoerce
   , Counted(..)
+  , SomeRefC(..)
   ) where
 
 import Data.Coerce
@@ -66,7 +67,7 @@ share = Unsafe.toLinear $ \rc@(RefCounted _ counter x) -> Linear.do
 
   let cfs = countedFields x
 
-  traverse' (Unsafe.toLinear $ \y -> Unsafe.Counted.inc y) cfs >>=
+  traverse' (Unsafe.toLinear $ \(SomeRefC y) -> SomeRefC <$> Unsafe.Counted.inc y) cfs >>=
     Unsafe.toLinear (\_ -> -- We can forget the references since we were just unsafely incrementing them all
 
       -- It's safe to return two references to the pointer because we've

@@ -24,13 +24,14 @@ data RefC' lm a where
 -- instance Prelude.Functor RefC where
 --   fmap f (RefCounted freeC c x) = (RefCounted (freeC . f) c (f x))
 
+data SomeRefC = forall m b. SomeRefC (RefC' m b)
 
 class Counted a where
   -- | Must return all reference counted (recursively nested) fields of @a@.
   -- This is not only the direct 'RefC', but also the nested 'RefC's of all
   -- fields that instance 'Counted'.
   -- If you fail to implement this correctly, reference counting won't be sound!
-  countedFields :: a -> [∀ lm b. RefC' lm b]
+  countedFields :: a -> [SomeRefC]
 
 instance (Counted a, Counted b) => Counted (a,b) where
   countedFields (x,y) = countedFields x ++ countedFields y
