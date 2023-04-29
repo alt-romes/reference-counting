@@ -26,3 +26,7 @@ inc (RefCounted f counter a) = Linear.do
   Ur _ <- liftSystemIOU (Counter.add counter 1) -- increment reference count
   pure (RefCounted f counter a)
 
+-- | Unsafely get an aliased value. The counter is kept unchanged.
+get :: RefC' m' a -> a
+get (RefCounted _ _ a) = a
+

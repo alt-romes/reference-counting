@@ -1,3 +1,5 @@
+[ ] Instance Dupable and Consumable for aliased things
+[ ] Use name Aliased instead of RefC?
 [x] Wait for ghc patch to Cmm parser
 [x] Wait for Bodigrim's PR on atomic-counter
 [x] Report segfaults on atomic-counter benchmarks

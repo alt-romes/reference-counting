@@ -98,6 +98,22 @@ share = Unsafe.toLinear $ \rc@(RefCounted _ counter x) -> Linear.do
 -- x' <- useSomehow x
 -- cleanup x'
 -- @
+--
+-- ...
+--
+-- I realised this isn't truly safe, if we have an aliased @a@ in location X,
+-- and one in Y, when we 'get' @a@ at Y, and modify @a@ to a reduced version of
+-- itself (say, remove an element from the list), and only then call 'free' on
+-- it, in location X @a@ will still be complete, and freeing it then could be Very Wrong!
+-- In the example, if we remove an element from the list and free it manually,
+-- and then use the refcounted free to free the rest of the list, if there are
+-- other aliases to the full list, we could double free the first element of
+-- the list
+--
+-- New Invariant: Parts of @a@ cannot be freed by any means, the "whole" of @a@
+-- must be freed by the function!
+--
+-- ROMES:TODO: Can we enforce it somehow?
 get :: MonadIO lm => RefC' lm a ⊸ lm (a, a ⊸ lm ())
 get (RefCounted freeC counter x) = Linear.do
   Ur oldCount <- liftSystemIOU (Counter.sub counter 1)
