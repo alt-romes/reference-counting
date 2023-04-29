@@ -18,6 +18,8 @@ import Control.Monad.IO.Class.Linear
 import Data.Counted.Internal
 
 
+-- ROMES:TODO: Should inc also increase refcount of all nested refc?
+-- If yes, change the `share` definition too.
 -- | Unsafely increment the counter of some reference counted structure.
 inc :: MonadIO m => RefC' m' a ⊸ m (RefC' m' a)
 inc (RefCounted f counter a) = Linear.do

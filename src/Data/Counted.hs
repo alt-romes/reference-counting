@@ -17,8 +17,11 @@ module Data.Counted
   -- , refcoerce
   , Counted(..)
   , SomeRefC(..)
+
+  , assertLast
   ) where
 
+import Control.Exception (assert)
 import Data.Coerce
 -- import qualified System.IO.Resource.Linear as Linear
 import Control.Functor.Linear as Linear hiding (get, modify)
@@ -137,5 +140,13 @@ lcoerce :: Coercible a b => a ⊸ b
 lcoerce = Unsafe.toLinear coerce
 
 -- TODO: What about refcounted data structures including other refcounted structures? Wouldn't we need to update all children +1? ...
+
+-- | Assert that this is the last reference
+-- (Recall assertions are disabled by -O and -fignore-assertions)
+assertLast :: MonadIO m => RefC' m a ⊸ m (RefC' m a)
+assertLast = Unsafe.toLinear \(RefCounted f counter a) -> Linear.do
+  Ur amt <- liftSystemIOU (Counter.get counter)
+  assert (amt == 1) $
+    pure (RefCounted f counter a)
 
 
