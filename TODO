@@ -1,3 +1,5 @@
+[-] Perhaps we can make use of the Dupable instance to get rid of the countable instance?
+    No, that's quite orthogonal
 [ ] Instance Dupable and Consumable for aliased things
 [ ] Use name Aliased instead of RefC?
 [x] Wait for ghc patch to Cmm parser

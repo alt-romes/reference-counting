@@ -64,7 +64,8 @@ new freeC x = Linear.do
   -- Ur refX <- Unsafe.toLinear newIORef x
   pure $ RefCounted freeC c x
 
-share :: MonadIO lm => RefC' lm a ⊸ lm (RefC' lm a, RefC' lm a)
+-- The monad the aliased value must be freed in doesn't need to be the monad it is shared in -- share doesn't attempt to consume resource.
+share :: MonadIO lm => RefC' lm' a ⊸ lm (RefC' lm' a, RefC' lm' a)
 share = Unsafe.toLinear $ \rc@(RefCounted _ counter x) -> Linear.do
   Ur _ <- liftSystemIOU (Counter.add counter 1) -- increment reference count
 
