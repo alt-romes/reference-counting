@@ -9,6 +9,7 @@ module Data.Counted
 
   , Data.Counted.forget
 
+  , use
   , useM
 
   , modify
@@ -144,13 +145,17 @@ modifyM f (RefCounted freeC counter x) = RefCounted freeC counter <$> f x
 modify' :: Counted b => MonadIO lm => (b ⊸ lm ()) -> (a ⊸ b) ⊸ RefC' lm a ⊸ RefC' lm b
 modify' freeC f (RefCounted _ counter x) = RefCounted freeC counter (f x)
 
+-- | Like 'useM'
+use :: RefC' m' a ⊸ (a ⊸ (a, b)) ⊸ (RefC' m' a, b)
+use (RefCounted freeC counter x) f = case f x of (a,b) -> (RefCounted freeC counter a, b)
+
 -- | Use a reference counted value in an action that uses that value linearly
 -- without destroying it.
 --
 -- The value with the same reference count will be returned together with a
 -- byproduct of the linear computation.
 useM :: MonadIO m
-     => RefC' m a ⊸ (a ⊸ m (a, b)) ⊸ m (RefC' m a, b)
+     => RefC' m' a ⊸ (a ⊸ m (a, b)) ⊸ m (RefC' m' a, b)
 useM (RefCounted freeC counter x) f = f x >>= \(a,b) -> pure (RefCounted freeC counter a, b)
 
 lcoerce :: Coercible a b => a ⊸ b

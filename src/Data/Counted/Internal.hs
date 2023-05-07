@@ -53,7 +53,6 @@ instance (Counted a, Counted b) => Counted (a,b) where
 instance Counted a => Counted (IM.IntMap a) where
   countedFields = Prelude.foldMap countedFields
 
-
 -- Utils
 
 class Fields rep where
