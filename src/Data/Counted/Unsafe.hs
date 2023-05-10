@@ -30,3 +30,10 @@ inc (RefCounted f counter a) = Linear.do
 get :: RefC' m' a -> a
 get (RefCounted _ _ a) = a
 
+-- ROMES:TODO: Should dec also decrement refcount of all nested refc? If yes, change the others definition too.
+-- | Unsafely decrement the counter of some reference counted structure and get
+-- the reference counted value (it's quite unsafe).
+dec :: MonadIO m => RefC' m' a ⊸ m a
+dec (RefCounted f counter a) = Linear.do
+  Ur _ <- liftSystemIOU (Counter.sub counter 1) -- decrement reference count
+  pure a
