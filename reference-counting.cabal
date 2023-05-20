@@ -53,6 +53,7 @@ extra-doc-files:    CHANGELOG.md
 
 common warnings
     ghc-options: -Wall
+    -- -dlint -dcore-lint -dasm-lint -dcmm-lint -dstg-lint
 
 library
     -- Import common warning flags.

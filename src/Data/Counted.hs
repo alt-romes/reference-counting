@@ -36,6 +36,7 @@ import Control.Monad.IO.Class.Linear
 
 import Data.Counted.Internal
 import qualified Data.Counted.Unsafe as Unsafe.Counted
+import qualified System.IO.Unsafe (unsafePerformIO)
 
 -- TODO: Move to own package, like StateVar but linear?
 -- class Reference ref where
@@ -82,6 +83,20 @@ share = Unsafe.toLinear $ \rc@(RefCounted _ counter x) -> Linear.do
       -- ensuring the resource is freed exactly one.
       pure (rc, rc))
 
+-- | Just like 'share', but doesn't require the action to be performed whithin
+-- a MonadIO. Is there a situation where one might want to use 'share'
+-- explicitly rather than dup? At least while let bindings are not working for linear types.
+--
+-- I suppose we also require that this function is bound strictly, as otherwise the value might not be incremented when expected
+-- In that sense I suppose it is unsafe? If we call unsafeDup, then forget, but don't force the result of unsafeDup, forget will actually forget the result instead of having been incremented?
+-- Have I taken precautions enough to ensure things happen as expected or does unsafePerformIO still not give me that?
+--
+-- Still seems unwieldly... the side effects are too observable
+-- unsafeDup :: RefC' x a ⊸ (RefC' x a, RefC' x a)
+-- unsafeDup s = let !(a1,a2) = Unsafe.toLinear unsafePerformIO (share s) in (a1,a2)
+-- {-# NOINLINE unsafeDup #-}
+
+
 -- | This function returns a value that is reference counted in a linear pair
 -- with a function to free the linear value. Since both the value and freeing
 -- function must be consumed linearly, it is guaranteed that the returned
@@ -127,11 +142,17 @@ get (RefCounted freeC counter x) = Linear.do
       -- This is not the last reference, do nothing else.
       pure (x, Unsafe.toLinear2 const (pure ()))
 
--- Forget the existence of a linear resource, freeing it if necessary
+-- Forget the existence of a linear refcounted resource, freeing it if necessary
 forget :: MonadIO lm => RefC' lm a ⊸ lm ()
 forget (RefCounted freeC counter x) = Linear.do
-  Ur _ <- liftSystemIOU (Counter.sub counter 1)
-  freeC x
+  Ur oldCount <- liftSystemIOU (Counter.sub counter 1)
+  if oldCount == 1
+     then Linear.do
+       -- This is the last reference to the resource, free it.
+       freeC x
+     else
+       -- noop
+       pure (Unsafe.toLinear (\_ -> ()) x)
 
 -- refcoerce :: Coercible a b => RefC a ⊸ RefC b
 -- refcoerce (RefCounted freeC counter x) = RefCounted (freeC . lcoerce) counter (lcoerce x)
