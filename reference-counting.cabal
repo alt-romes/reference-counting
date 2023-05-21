@@ -23,10 +23,11 @@ name:               reference-counting
 version:            0.1.0.0
 
 -- A short (one-line) description of the package.
--- synopsis:
+synopsis: A reference counting library to alias linear resources
 
 -- A longer description of the package.
--- description:
+description: A reference counting library to alias linear resources.
+             Get started by importing @'Data.Linear.Alias'@!
 
 -- The license under which the package is released.
 license:            BSD-3-Clause
@@ -34,66 +35,52 @@ license:            BSD-3-Clause
 -- The file containing the license text.
 license-file:       LICENSE
 
--- The package author(s).
+-- The package author(s) and maintainer(s).
 author:             Rodrigo Mesquita
-
--- An email address to which users can send suggestions, bug reports, and patches.
 maintainer:         rodrigo.m.mesquita@gmail.com
 
 -- A copyright notice.
 -- copyright:
+
 category:           Data
 build-type:         Simple
 
--- Extra doc files to be distributed with the package, such as a CHANGELOG or a README.
 extra-doc-files:    CHANGELOG.md
+                    README.md
 
--- Extra source files to be distributed with the package, such as examples, or a tutorial module.
--- extra-source-files:
+source-repository head
+    type: git
+    location: https://github.com/alt-romes/reference-counting
 
 common warnings
     ghc-options: -Wall
-    -- -dlint -dcore-lint -dasm-lint -dcmm-lint -dstg-lint
+                 -- -dlint -dcore-lint -dasm-lint -dcmm-lint -dstg-lint
 
 library
-    -- Import common warning flags.
     import:           warnings
 
-    -- Modules exported by the library.
     exposed-modules:  Data.Linear.Alias
                       Data.Linear.Alias.Unsafe
 
-    -- Modules included in this library but not exported.
     other-modules:    Data.Linear.Alias.Internal
 
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
+    build-depends:    base >= 4.17.0 && < 4.19,
+                      linear-base >= 0.3 && < 0.4,
+                      atomic-counter >= 0.1.2 && < 0.2,
 
-    -- Other library packages from which modules are imported.
-    build-depends:    base >=4.17.0.0,
-                      linear-base,
-                      atomic-counter,
-                      -- Only for instances of Aliasable
-                      containers
+                      -- only for instances of Aliasable
+                      containers >= 0.6 && < 0.7,
 
-    -- Directories containing source files.
     hs-source-dirs:   src
-
-    -- Base language which the package is written in.
     default-language: GHC2021
 
 test-suite reference-counting-test
-    -- Import common warning flags.
     import:           warnings
 
-    -- Base language which the package is written in.
     default-language: GHC2021
 
     -- Modules included in this executable, other than Main.
     -- other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
 
     -- The interface type and version of the test suite.
     type:             exitcode-stdio-1.0
