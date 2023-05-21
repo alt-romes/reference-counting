@@ -60,11 +60,11 @@ library
     import:           warnings
 
     -- Modules exported by the library.
-    exposed-modules:  Data.Counted,
-                      Data.Counted.Unsafe
+    exposed-modules:  Data.Linear.Alias
+                      Data.Linear.Alias.Unsafe
 
     -- Modules included in this library but not exported.
-    other-modules:    Data.Counted.Internal
+    other-modules:    Data.Linear.Alias.Internal
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -73,7 +73,7 @@ library
     build-depends:    base >=4.17.0.0,
                       linear-base,
                       atomic-counter,
-                      -- Only for instances of Countable
+                      -- Only for instances of Aliasable
                       containers
 
     -- Directories containing source files.
