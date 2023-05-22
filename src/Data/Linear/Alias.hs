@@ -26,6 +26,7 @@ import Control.Monad.IO.Class.Linear
 import Prelude.Linear hiding (forget)
 import qualified Control.Concurrent.Counter as Counter
 import qualified Unsafe.Linear as Unsafe
+import qualified Data.IntMap as IM
 
 import Data.Linear.Alias.Internal
 import qualified Data.Linear.Alias.Unsafe as Unsafe.Alias
@@ -166,4 +167,18 @@ instance Shareable μ (Alias μ a) where
 -- unsafeDup :: Alias x a ⊸ (Alias x a, Alias x a)
 -- unsafeDup s = let !(a1,a2) = Unsafe.toLinear unsafePerformIO (share s) in (a1,a2)
 -- {-# NOINLINE unsafeDup #-}
+
+----- Other instances -----
+
+instance {-# OVERLAPPABLE #-} Consumable a => Forgettable m a where
+  forget a = pure (consume a)
+  {-# INLINE forget #-}
+
+instance {-# OVERLAPPING #-} (Forgettable m a, Forgettable m b) => Forgettable m (a,b) where
+  forget (a,b) = forget a >> forget b
+  {-# INLINE forget #-}
+
+instance Forgettable m a => Forgettable m (IM.IntMap a) where
+  forget im = consume <$> traverse' forget (IM.elems im)
+  {-# INLINE forget #-}
 

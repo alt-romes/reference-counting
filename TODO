@@ -1,3 +1,5 @@
+[ ] Reliable instances through Generic. Currently we fail too often to make an instance and can get into overlapping instances issues (those ought to be fixed by {-# OVERLAPPING #-} the (Alias _ _) instance).
+[x] Does the 'Alias' name match with the 'forget' and 'share' functions better than 'RefC'? What does it mean to share an alias? Isn't it more like making one...? I suppose one could think of sharing an aliased resource!
 [ ] Write testsuite
 [ ] Include a tutorial in the README
 [-] If we require the free function on "forget" we might be able to instance Functor, but then how would "get" work?
