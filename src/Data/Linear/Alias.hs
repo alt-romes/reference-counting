@@ -27,6 +27,7 @@ import Prelude.Linear hiding (forget)
 import qualified Control.Concurrent.Counter as Counter
 import qualified Unsafe.Linear as Unsafe
 import qualified Data.IntMap as IM
+import qualified Data.Bifunctor.Linear as B
 
 import Data.Linear.Alias.Internal
 import qualified Data.Linear.Alias.Unsafe as Unsafe.Alias
@@ -182,3 +183,19 @@ instance Forgettable m a => Forgettable m (IM.IntMap a) where
   forget im = consume <$> traverse' forget (IM.elems im)
   {-# INLINE forget #-}
 
+
+instance {-# OVERLAPPABLE #-} Dupable a => Shareable m a where
+  share a = pure (dup2 a)
+  {-# INLINE share #-}
+
+instance {-# OVERLAPPING #-} (Shareable m a, Shareable m b) => Shareable m (a,b) where
+  share (a0,b0) = Linear.do
+    (a1,a2) <- share a0
+    (b1,b2) <- share b0
+    pure ((a1,b1),(a2,b2))
+  {-# INLINE share #-}
+
+instance Shareable m a => Shareable m (IM.IntMap a) where
+  share im = B.bimap (Unsafe.toLinear IM.fromList) (Unsafe.toLinear IM.fromList) . unzip <$>
+             traverse' share (IM.toList im)
+  {-# INLINE share #-}
