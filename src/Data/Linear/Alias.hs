@@ -22,6 +22,7 @@ module Data.Linear.Alias
   ) where
 
 import Control.Functor.Linear as Linear hiding (get, modify)
+import qualified Data.Functor.Linear as Data.Linear
 import Control.Monad.IO.Class.Linear
 import Prelude.Linear hiding (forget)
 import qualified Control.Concurrent.Counter as Counter
@@ -123,14 +124,11 @@ useM (Alias freeC counter x) f = f x >>= \(a,b) -> pure (Alias freeC counter a, 
 
 class Forgettable m a where
   -- | Forget the existence of a linear resource
-  forget :: MonadIO m => a ⊸ m ()
-  -- romes: I had never thought about it, but it's a bit weird for the method
-  -- to have constraints over the @m@, where the instances don't have to
-  -- require that instance?
+  forget :: a ⊸ m ()
 
-instance Forgettable μ (Alias μ a) where
+instance MonadIO μ => Forgettable μ (Alias μ a) where
   -- | Forget the existence of a linearly aliased resource, freeing it if necessary
-  forget :: MonadIO μ => Alias μ a ⊸ μ ()
+  forget :: Alias μ a ⊸ μ ()
   forget (Alias freeC counter x) = Linear.do
     -- Read comment regarding the freeing function and recursively nested aliases in @'get'@.
     Ur oldCount <- liftSystemIOU (Counter.sub counter 1)
@@ -144,11 +142,11 @@ instance Forgettable μ (Alias μ a) where
 
 class Shareable m a where
   -- | Share a linear resource
-  share :: MonadIO m => a ⊸ m (a, a)
+  share :: a ⊸ m (a, a)
 
-instance Shareable m (Alias μ a) where
+instance MonadIO m => Shareable m (Alias μ a) where
   -- | Share a linearly aliased resource, the heart of reference counting aliases.
-  share :: MonadIO m => Alias μ a ⊸ m (Alias μ a, Alias μ a)
+  share :: Alias μ a ⊸ m (Alias μ a, Alias μ a)
   share alias'' = Linear.do
     alias' <- Unsafe.Alias.inc alias'' -- increment reference count
 
@@ -174,31 +172,31 @@ instance Shareable m (Alias μ a) where
 
 ----- Other instances -----
 
-instance {-# OVERLAPPABLE #-} Consumable a => Forgettable m a where
+instance {-# OVERLAPPABLE #-} (Applicative m, Consumable a) => Forgettable m a where
   forget a = pure (consume a)
   {-# INLINE forget #-}
 
-instance {-# OVERLAPPING #-} (Forgettable m a, Forgettable m b) => Forgettable m (a,b) where
+instance {-# OVERLAPPING #-} (Monad m, Forgettable m a, Forgettable m b) => Forgettable m (a,b) where
   forget (a,b) = forget a >> forget b
   {-# INLINE forget #-}
 
-instance Forgettable m a => Forgettable m (IM.IntMap a) where
+instance (Functor m, Data.Linear.Applicative m, Forgettable m a) => Forgettable m (IM.IntMap a) where
   forget im = consume <$> traverse' forget (IM.elems im)
   {-# INLINE forget #-}
 
 
-instance {-# OVERLAPPABLE #-} Dupable a => Shareable m a where
+instance {-# OVERLAPPABLE #-} (Applicative m, Dupable a) => Shareable m a where
   share a = pure (dup2 a)
   {-# INLINE share #-}
 
-instance {-# OVERLAPPING #-} (Shareable m a, Shareable m b) => Shareable m (a,b) where
+instance {-# OVERLAPPING #-} (Monad m, Shareable m a, Shareable m b) => Shareable m (a,b) where
   share (a0,b0) = Linear.do
     (a1,a2) <- share a0
     (b1,b2) <- share b0
     pure ((a1,b1),(a2,b2))
   {-# INLINE share #-}
 
-instance Shareable m a => Shareable m (IM.IntMap a) where
+instance (Monad m, Shareable m a) => Shareable m (IM.IntMap a) where
   share im = B.bimap (Unsafe.toLinear IM.fromList) (Unsafe.toLinear IM.fromList) . unzip <$>
              traverse' share (IM.toList im)
   {-# INLINE share #-}
