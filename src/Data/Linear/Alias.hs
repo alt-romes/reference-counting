@@ -124,6 +124,9 @@ useM (Alias freeC counter x) f = f x >>= \(a,b) -> pure (Alias freeC counter a, 
 class Forgettable m a where
   -- | Forget the existence of a linear resource
   forget :: MonadIO m => a ⊸ m ()
+  -- romes: I had never thought about it, but it's a bit weird for the method
+  -- to have constraints over the @m@, where the instances don't have to
+  -- require that instance?
 
 instance Forgettable μ (Alias μ a) where
   -- | Forget the existence of a linearly aliased resource, freeing it if necessary
@@ -143,7 +146,7 @@ class Shareable m a where
   -- | Share a linear resource
   share :: MonadIO m => a ⊸ m (a, a)
 
-instance Shareable μ (Alias μ a) where
+instance Shareable m (Alias μ a) where
   -- | Share a linearly aliased resource, the heart of reference counting aliases.
   share :: MonadIO m => Alias μ a ⊸ m (Alias μ a, Alias μ a)
   share alias'' = Linear.do
@@ -199,3 +202,5 @@ instance Shareable m a => Shareable m (IM.IntMap a) where
   share im = B.bimap (Unsafe.toLinear IM.fromList) (Unsafe.toLinear IM.fromList) . unzip <$>
              traverse' share (IM.toList im)
   {-# INLINE share #-}
+
+
