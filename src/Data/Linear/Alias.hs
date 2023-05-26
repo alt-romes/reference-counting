@@ -174,11 +174,16 @@ instance Shareable m (Alias μ a) where
 
 ----- Other instances -----
 
-instance {-# OVERLAPPABLE #-} Consumable a => Forgettable m a where
-  forget a = pure (consume a)
-  {-# INLINE forget #-}
+-- The Consumable => Forgettable and Dupable => Shareable instances end up being a nuisance, despite being useful to have forgettable instances of things like Ints for free.
 
-instance {-# OVERLAPPING #-} (Forgettable m a, Forgettable m b) => Forgettable m (a,b) where
+-- instance {-# OVERLAPPABLE #-} Consumable a => Forgettable m a where
+--   forget a = pure (consume a)
+--   {-# INLINE forget #-}
+-- instance {-# OVERLAPPABLE #-} Dupable a => Shareable m a where
+--   share a = pure (dup2 a)
+--   {-# INLINE share #-}
+
+instance (Forgettable m a, Forgettable m b) => Forgettable m (a,b) where
   forget (a,b) = forget a >> forget b
   {-# INLINE forget #-}
 
@@ -186,12 +191,7 @@ instance Forgettable m a => Forgettable m (IM.IntMap a) where
   forget im = consume <$> traverse' forget (IM.elems im)
   {-# INLINE forget #-}
 
-
-instance {-# OVERLAPPABLE #-} Dupable a => Shareable m a where
-  share a = pure (dup2 a)
-  {-# INLINE share #-}
-
-instance {-# OVERLAPPING #-} (Shareable m a, Shareable m b) => Shareable m (a,b) where
+instance (Shareable m a, Shareable m b) => Shareable m (a,b) where
   share (a0,b0) = Linear.do
     (a1,a2) <- share a0
     (b1,b2) <- share b0
@@ -203,4 +203,8 @@ instance Shareable m a => Shareable m (IM.IntMap a) where
              traverse' share (IM.toList im)
   {-# INLINE share #-}
 
+instance Forgettable m Int where
+  forget = pure . consume
+instance Shareable m Int where
+  share = pure . dup2
 
