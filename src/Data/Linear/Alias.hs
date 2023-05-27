@@ -191,6 +191,10 @@ instance Forgettable m a => Forgettable m (IM.IntMap a) where
   forget im = consume <$> traverse' forget (IM.elems im)
   {-# INLINE forget #-}
 
+instance Forgettable m a => Forgettable m [a] where
+  forget l = consume <$> traverse' forget l
+  {-# INLINE forget #-}
+
 instance (Shareable m a, Shareable m b) => Shareable m (a,b) where
   share (a0,b0) = Linear.do
     (a1,a2) <- share a0
@@ -201,6 +205,10 @@ instance (Shareable m a, Shareable m b) => Shareable m (a,b) where
 instance Shareable m a => Shareable m (IM.IntMap a) where
   share im = B.bimap (Unsafe.toLinear IM.fromList) (Unsafe.toLinear IM.fromList) . unzip <$>
              traverse' share (IM.toList im)
+  {-# INLINE share #-}
+
+instance Shareable m a => Shareable m [a] where
+  share l = unzip <$> traverse' share l
   {-# INLINE share #-}
 
 instance Forgettable m Int where
