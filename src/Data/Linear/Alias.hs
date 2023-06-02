@@ -14,6 +14,7 @@ module Data.Linear.Alias
   , useM
   , modify
   , modifyM
+  , hoist
 
   -- * Creating aliases
   , newAlias
@@ -41,7 +42,7 @@ import qualified Data.Linear.Alias.Unsafe as Unsafe.Alias
 newAlias :: MonadIO m
     => Aliasable a
     => (a ⊸ μ ()) -- ^ Function to free resource when the last alias is released
-    -> a          -- ^ The resource to alias
+     ⊸ a          -- ^ The resource to alias
      ⊸ m (Alias μ a)
 newAlias freeC x = Linear.do
   Ur c <- liftSystemIOU $ Counter.new 1
@@ -118,6 +119,13 @@ use (Alias freeC counter x) f = case f x of (a,b) -> (Alias freeC counter a, b)
 useM :: MonadIO m
      => Alias μ a ⊸ (a ⊸ m (a, b)) ⊸ m (Alias μ a, b)
 useM (Alias freeC counter x) f = f x >>= \(a,b) -> pure (Alias freeC counter a, b)
+
+
+hoist :: MonadIO m
+      => Aliasable b
+      => ((a ⊸ m ()) ⊸ b ⊸ μ ()) ⊸ (a ⊸ b) ⊸ Alias m a ⊸ Alias μ b
+hoist freeAB f (Alias freeA counter x) = Alias (freeAB freeA) counter (f x)
+
 
 ----- Signature classes -----
 
