@@ -195,6 +195,10 @@ instance (Forgettable m a, Forgettable m b) => Forgettable m (a,b) where
   forget (a,b) = forget a >> forget b
   {-# INLINE forget #-}
 
+instance (Forgettable m a, Forgettable m b, Forgettable m c) => Forgettable m (a,b,c) where
+  forget (a,b,c) = forget a >> forget b >> forget c
+  {-# INLINE forget #-}
+
 instance Forgettable m a => Forgettable m (IM.IntMap a) where
   forget im = consume <$> traverse' forget (IM.elems im)
   {-# INLINE forget #-}
