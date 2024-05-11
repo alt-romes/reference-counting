@@ -55,6 +55,7 @@ newAlias freeC x = Linear.do
 -- the one used to free the resource.
 --
 -- The cleanup function can be one of two things:
+--
 -- * If the returned value was the last reference, the function is the one
 -- passed as an argument to 'new'
 --
@@ -62,17 +63,18 @@ newAlias freeC x = Linear.do
 -- function will be a no-op, but still must be called on the value.
 --
 -- Usage:
+--
 -- @
 -- (x, cleanup) <- Aliasable.get ref
 -- x' <- useSomehow x
 -- cleanup x'
 -- @
---
--- Note on unsafety: If some (sub-)resource is unsafely duplicated, it's
--- crucial that if that resource is freed manually, it cannot be passed on to
--- the resource-freeing-function! If you don't mess with unsafety this
--- shouldn't be possible.
 get :: MonadIO μ => Alias μ a ⊸ μ (a, a ⊸ μ ())
+-- Note on unsafety: If some (sub-)resource is unsafely duplicated from the
+-- returned @a@, it's crucial that if @a@ is freed manually, it cannot be
+-- passed on to the resource-freeing-function! If you don't mess with unsafety
+-- this shouldn't be possible. (This is kind of a moot comment since it must be
+-- considered in each case carefully).
 get (Alias freeC counter x) = Linear.do
   -- The freeing function, in consuming @x@ linearly, is guaranteed to also
   -- free/forget recursively nested reference-counted resources. That's why we
@@ -97,13 +99,6 @@ modify :: (a ⊸ a) ⊸ Alias μ a ⊸ Alias μ a
 modify f (Alias freeC counter x) = Alias freeC counter (f x)
 
 -- | Run a monadic function that modifies a reference counted resource.
---
--- Note on unsafety: If some (sub-)resource is unsafely duplicated, it's
--- crucial that if that resource is freed manually, it cannot be passed on to
--- the resource-freeing-function! If you don't mess with unsafety this
--- shouldn't be possible.
---
--- I'm not sure of a way to maintain that invariant in the type system.
 modifyM :: MonadIO m => (a ⊸ m a) ⊸ Alias μ a ⊸ m (Alias μ a)
 modifyM f (Alias freeC counter x) = Alias freeC counter <$> f x
 
@@ -167,7 +162,7 @@ instance Shareable m (Alias μ a) where
     -- ensuring the resource is freed exactly one.
     pure $ Unsafe.toLinear (\alias -> (alias, alias)) alias'
 
--- | Just like 'share', but doesn't require the action to be performed whithin
+-- Just like 'share', but doesn't require the action to be performed whithin
 -- a MonadIO. Is there a situation where one might want to use 'share'
 -- explicitly rather than dup? At least while let bindings are not working for linear types.
 --

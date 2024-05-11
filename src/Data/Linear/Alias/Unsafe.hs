@@ -59,7 +59,7 @@ dec = Unsafe.toLinear \(Alias _ counter a) -> Linear.do
   where
     decCounter c = liftSystemIOU (Counter.sub c 1)
 
--- | Unsafely get an aliased value. The counter is kept unchanged.
+-- | Unsafely get an aliased value. All counters are kept unchanged.
 get :: Alias m' a -> a
 get (Alias _ _ a) = a
 

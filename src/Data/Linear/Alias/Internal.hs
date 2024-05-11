@@ -1,4 +1,4 @@
--- | TODO Hide this module in haddock, or remove from exposed-modules altogether
+{-# OPTIONS_HADDOCK not-home #-}
 {-# LANGUAGE ImpredicativeTypes, UnicodeSyntax, LinearTypes, QualifiedDo,
    NoImplicitPrelude, BlockArguments, DefaultSignatures, QuantifiedConstraints,
    UndecidableInstances, AllowAmbiguousTypes #-}
