@@ -44,6 +44,7 @@ maintainer:         rodrigo.m.mesquita@gmail.com
 
 category:           Data
 build-type:         Simple
+tested-with:        GHC ==9.8.2
 
 extra-doc-files:    CHANGELOG.md
                     README.md
