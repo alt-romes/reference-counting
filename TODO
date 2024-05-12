@@ -1,3 +1,4 @@
+[ ] `modify` is kind of unneeded, it's just a variation of `use` without a returned `b`.
 [ ] To test this, add a testing mode that will warn if anything is not freed or
     freed twice at runtime by keeping additional track of references in some
     structure. Then, run ghengin with this validation to see if nothing is broken.
