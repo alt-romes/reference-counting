@@ -1,3 +1,15 @@
+# General idea
+
+You can create an alias to a resource, and then `share` that alias
+multiple times. You can `forget` aliases of resources. When the last alias is
+forgotten, the resource is freed with the given finaliser.
+
+Linearity in the reference counting API guarantees that an aliased resource will
+be freed exactly once because, in turn, all aliases of a resource need to be
+forgotten exactly once. Moreover, linearity exacts an explicit operation to
+share aliases which means we can trivially increment the reference count when
+`share` is called.
+
 # Usage
 
 The only application to date using `reference-counting` (this package) is
@@ -12,13 +24,7 @@ At that point in time, I was fortunately reading TAPL2 which has a chapter on
 reference counting with linear types which also inspired me to write a draft
 version of this library.
 
-`reference-counting` allows a linear resource to be shared:
-```
-share :: Shareable m a => a %1 -> m (a, a)
-```
-How is this safe?
-
-First, note that the package is still in an experimental/candidate state where
+Note that the package is still in an experimental/candidate state where
 there are potential unsoundness bugs in the API design.
 The point of this candidate release is to receive feedback on the design and its
 flaws -- I'm very interested if you discover it is unsound -- it has been a
@@ -41,20 +47,6 @@ whereas previously there were so many that I decided to rewrite the engine with
 linear types...
 
 # Design
-
-## General idea
-
-You can create an alias to a resource, and then `share` that alias
-multiple times. You can `forget` aliases of resources. When the last alias is
-forgotten, the resource is freed with the given finaliser.
-
-Linearity in the reference counting API guarantees that an aliased resource will
-be freed exactly once because, in turn, all aliases of a resource need to be
-forgotten exactly once. Moreover, linearity exacts an explicit operation to
-share aliases which means we can trivially increment the reference count when
-`share` is called.
-
-## More in-depth
 
 The key datatype is `Alias` (opaque, tracks references dynamically under the
 hood). Any `a` that satisfies `Aliasable a` can be turned into an `Alias m a` in
@@ -88,7 +80,7 @@ Note that for `Alias`, the context in which `forget` is called has to be the
 same where the finalizer action is defined (the `μ` parameter to `Alias`), since
 the finalizer will be called if this was the last alias.
 
-### The tricky bits
+## The tricky bits
 
 This becomes way less simple when we allow aliased values to be actually used.
 That is, we only care about aliases if we can refer to the original values using
