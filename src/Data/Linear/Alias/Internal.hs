@@ -101,6 +101,9 @@ instance Aliasable Rational where
 
 -- Generic utilities
 
+instance (Generic a, Fields (Rep a)) => Aliasable (Generically a) where
+  countedFields (Generically a) = fields (from a)
+
 class Fields rep where
   fields :: rep a -> [SomeAlias]
 
