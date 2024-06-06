@@ -40,7 +40,6 @@ import qualified Data.Linear.Alias.Unsafe as Unsafe.Alias
 
 -- | Create an alias for a resource.
 newAlias :: MonadIO m
-    => Aliasable a
     => (a ⊸ μ ()) -- ^ Function to free resource when the last alias is released
      ⊸ a          -- ^ The resource to alias
      ⊸ m (Alias μ a)
@@ -149,7 +148,7 @@ class Shareable m a where
   -- | Share a linear resource
   share :: MonadIO m => a ⊸ m (a, a)
 
-instance Shareable m (Alias μ a) where
+instance Aliasable a => Shareable m (Alias μ a) where
   -- | Share a linearly aliased resource, the heart of reference counting aliases.
   share :: MonadIO m => Alias μ a ⊸ m (Alias μ a, Alias μ a)
   share alias'' = Linear.do

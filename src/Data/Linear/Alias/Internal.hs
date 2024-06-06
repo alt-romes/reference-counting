@@ -18,8 +18,7 @@ import qualified Data.Map as M
 
 -- | A reference counted alias
 data Alias m a where
-  Alias :: Aliasable a
-        => (a ⊸ m ())       -- ^ Function to free resource when the last alias is forgotten
+  Alias :: (a ⊸ m ())       -- ^ Function to free resource when the last alias is forgotten
         -> !Counter.Counter -- ^ The counter associated to this reference counted alias
         -> a                -- ^ The aliased resource
          ⊸ Alias m a

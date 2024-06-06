@@ -22,7 +22,7 @@ import qualified Unsafe.Linear as Unsafe
 
 -- | Unsafely increment the counter of some reference counted resource, and of
 -- all recursively nested reference counted resources.
-inc :: MonadIO m => Alias m' a ⊸ m (Alias m' a)
+inc :: MonadIO m => Aliasable a => Alias m' a ⊸ m (Alias m' a)
 inc = Unsafe.toLinear \(Alias f counter a) -> Linear.do
   Ur _ <- incCounter counter -- increment reference count
 
