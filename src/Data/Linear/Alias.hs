@@ -19,7 +19,6 @@ module Data.Linear.Alias
 
   -- * Creating aliases
   , newAlias
-  , SomeAlias(..)
   ) where
 
 import GHC.Generics
@@ -65,7 +64,7 @@ newAlias freeC x = Linear.do
 -- Usage:
 --
 -- @
--- (x, cleanup) <- Aliasable.get ref
+-- (x, cleanup) <- Alias.get ref
 -- x' <- useSomehow x
 -- cleanup x'
 -- @
@@ -77,14 +76,8 @@ get :: MonadIO μ => Alias μ a ⊸ μ (a, a ⊸ μ ())
 -- considered in each case carefully).
 get (Alias freeC counter x) = Linear.do
   -- The freeing function, in consuming @x@ linearly, is guaranteed to also
-  -- free/forget recursively nested reference-counted resources. That's why we
-  -- don't need to (here) additionally call the freeing action in recursively
-  -- nested aliases, as it's guaranteed by linearity to happen in @freeC@.
-  --
-  -- That is also why we decrement the counter directly instead of using @'Unsafe.Alias.dec'@,
-  -- since the latter would recursively decrement all reference counted
-  -- aliases, which would be disastrous when the user defined functions
-  -- decremented said sub-aliases manually.
+  -- free/forget recursively nested reference-counted resources (guaranteed in
+  -- its implementation by linearity @freeC@).
   Ur oldCount <- liftSystemIOU (Counter.sub counter 1)
   if oldCount == 1
      then Linear.do
@@ -106,7 +99,7 @@ modifyM f (Alias freeC counter x) = Alias freeC counter <$> f x
 use :: Alias μ a ⊸ (a ⊸ (a, b)) ⊸ (Alias μ a, b)
 use (Alias freeC counter x) f = case f x of (a,b) -> (Alias freeC counter a, b)
 
--- | Use a reference Aliasable value in an action that uses that value linearly
+-- | Use a reference value in an action that uses that value linearly
 -- without destroying it.
 --
 -- The value with the same reference count will be returned together with a

@@ -24,9 +24,9 @@ data Alias m a where
 
 -- Generic utilities
 
--- | Must return all reference counted (recursively nested) fields of @a@.
--- These are not only the direct @'Alias'es@, but also the nested @'Alias'es@ of
--- all fields that instance @'Aliasable'@.
+-- | Return all reference counted (recursively nested) fields of @a@.
+-- These are not only @'Alias'es@ directly, but all the recursively nested
+-- @'Alias'es@ in @a@.
 countedFields :: (Generic a, Fields (Rep a)) => a -> [SomeAlias]
 -- The alternative of using the 'Data' constraint instead of Generic isn't
 -- good, since it would require making @Alias m a@ instance Data, which is

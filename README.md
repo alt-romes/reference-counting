@@ -49,14 +49,13 @@ linear types...
 # Design
 
 The key datatype is `Alias` (opaque, tracks references dynamically under the
-hood). Any `a` that satisfies `Aliasable a` can be turned into an `Alias m a` in
-a linear `MonadIO`:
+hood).
 ```haskell
 newAlias :: (a ⊸ μ ()) ⊸ a ⊸ m (Alias μ a)
 ```
 The first argument is a function to free the resource when the last reference to
 it is freed, and the second argument is the resource you're creating an alias
-for. `Aliasable` should be derived via `Generic` with `deriving anyclass Aliasable`.
+for.
 
 When you have an alias of a resource (`Alias m a`, where the `m` is the context
 in which the resource can be freed), you can `share` the alias. Sharing an alias
@@ -65,9 +64,11 @@ to a resource means there are now more aliases to the resource:
 share :: Alias μ a %1 -> m (Alias μ a, Alias μ a)
 ```
 In fact, you can `share` anything which is `Shareable`. `Alias`es are trivially
-shareable, but other types can be as well, with a little bit of effort. For example,
-we can `share` a list of aliases `[Alias Renderer Vk.Buffer]` to get two lists with the same
-aliases (`([Alias Renderer Vk.Buffer], [Alias Renderer Vk.Buffer])`).
+shareable, but other types can be as well via generic deriving, or a little bit
+of effort. For example, we can `share` a list of aliases `[Alias Renderer
+Vk.Buffer]` to get two lists with the same aliases (`([Alias Renderer
+Vk.Buffer], [Alias Renderer Vk.Buffer])`), and all nested aliases will also get
+shared in order to return the two lists.
 
 When you no longer need an alias you can `forget` it. If this is the last alias
 to the resource, the finalizer action (the first argument to `newAlias`) will be
@@ -143,7 +144,7 @@ type Alias = Alias.Alias Linear.IO -- Choose the monad you can allocate and free
 ### opaqueness for soundness?
 
 Perhaps this is very important to explain somehow earlier on or enforce: The
-`Aliasable` things should be opaque. That is, you should not be able to easily
+*aliased* things should be opaque. That is, you should not be able to easily
 modify the value which is aliased into something else. So, good aliasable values
 would be e.g.  pointers, handles, buffers, devices, GPU textures, `IORef`s,
 etc...
