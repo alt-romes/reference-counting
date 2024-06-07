@@ -1,4 +1,5 @@
-{-# LANGUAGE UnicodeSyntax, LinearTypes, QualifiedDo, NoImplicitPrelude, BlockArguments, ImpredicativeTypes #-}
+{-# LANGUAGE UnicodeSyntax, LinearTypes, QualifiedDo, NoImplicitPrelude, BlockArguments, ImpredicativeTypes, DefaultSignatures #-}
+{-# LANGUAGE UndecidableInstances #-} -- Rep a in the Generically instance
 -- | Simple reference counting with linear types inspired by Advanced Topics in
 -- Types and Programming Languages Chapter 1
 module Data.Linear.Alias
@@ -18,10 +19,10 @@ module Data.Linear.Alias
 
   -- * Creating aliases
   , newAlias
-  , Aliasable(..)
   , SomeAlias(..)
   ) where
 
+import GHC.Generics
 import Control.Functor.Linear as Linear hiding (get, modify)
 import Control.Monad.IO.Class.Linear
 import Prelude.Linear hiding (forget)
@@ -115,9 +116,7 @@ useM :: MonadIO m
 useM (Alias freeC counter x) f = f x >>= \(a,b) -> pure (Alias freeC counter a, b)
 
 
-hoist :: MonadIO m
-      => Aliasable b
-      => ((a ⊸ m ()) ⊸ b ⊸ μ ()) ⊸ (a ⊸ b) ⊸ Alias m a ⊸ Alias μ b
+hoist :: MonadIO m => ((a ⊸ m ()) ⊸ b ⊸ μ ()) ⊸ (a ⊸ b) ⊸ Alias m a ⊸ Alias μ b
 hoist freeAB f (Alias freeA counter x) = Alias (freeAB freeA) counter (f x)
 
 
@@ -146,20 +145,47 @@ instance Forgettable μ (Alias μ a) where
 
 class Shareable m a where
   -- | Share a linear resource
+  --
+  -- Careful! You must make sure that all aliases recursively nested within
+  -- this structure @a@ are properly shared/incremented. 
+  --
+  -- If you fail to implement this correctly, reference counting won't be sound.
+  -- Good thing is we can do this automatically! It's much less bug-prone,
+  -- especially if you update the definition of a datatype. Your @a@ just needs
+  -- to instance 'Generic'.
   share :: MonadIO m => a ⊸ m (a, a)
 
-instance Aliasable a => Shareable m (Alias μ a) where
+  default share :: (Generic a, Fields (Rep a)) => MonadIO m => a ⊸ m (a, a)
+  share = Unsafe.toLinear $ \x -> Linear.do
+
+    -- We can forget the counted fields after incrementing them all
+    consume <$>
+      traverse' (\(SomeAlias alias) -> Linear.do
+        a' <- Unsafe.Alias.inc alias -- increment reference count
+        Unsafe.toLinear const (pure ()) a') (countedFields x)
+
+    -- It's safe to return two references to the pointer because we've
+    -- incremented the reference count of all nested aliases. Both references must be used
+    -- linearly *and* we decrement the reference count with every use except
+    -- for the last through @free@, ensuring the resource is freed exactly one.
+    return (x,x)
+
+instance Shareable m (Alias μ a) where
   -- | Share a linearly aliased resource, the heart of reference counting aliases.
   share :: MonadIO m => Alias μ a ⊸ m (Alias μ a, Alias μ a)
   share alias'' = Linear.do
-    alias' <- Unsafe.Alias.inc alias'' -- increment reference count
-
-    -- It's safe to return two references to the pointer because we've
-    -- incremented the reference count of this and and all reference Aliasable
-    -- fields. Both references must be used linearly *and* we decrement the
-    -- reference count with every use except for the last through @free@,
-    -- ensuring the resource is freed exactly one.
+    -- Implement manually since there is no Generic instance for Alias
+    alias' <- Unsafe.Alias.inc alias'' 
     pure $ Unsafe.toLinear (\alias -> (alias, alias)) alias'
+
+instance (Generic a, Fields (Rep a)) => Shareable m (Generically a) where
+  share = Unsafe.toLinear $ \(Generically x) -> Linear.do
+    -- Same implementation as the default instance of `share`
+    consume <$>
+      traverse' (\(SomeAlias alias) -> Linear.do
+        a' <- Unsafe.Alias.inc alias -- increment reference count
+        Unsafe.toLinear const (pure ()) a') (countedFields x)
+    return (Generically x, Generically x)
 
 -- Just like 'share', but doesn't require the action to be performed whithin
 -- a MonadIO. Is there a situation where one might want to use 'share'

@@ -19,18 +19,10 @@ import Data.Linear.Alias.Internal
 
 import qualified Unsafe.Linear as Unsafe
 
-
--- | Unsafely increment the counter of some reference counted resource, and of
--- all recursively nested reference counted resources.
-inc :: MonadIO m => Aliasable a => Alias m' a ⊸ m (Alias m' a)
+-- | Unsafely increment the counter of some reference counted resource
+inc :: MonadIO m => Alias m' a ⊸ m (Alias m' a)
 inc = Unsafe.toLinear \(Alias f counter a) -> Linear.do
   Ur _ <- incCounter counter -- increment reference count
-
-  -- We can forget the counted fields after incrementing them all
-  consume <$>
-    traverse' (Unsafe.toLinear \(SomeAlias (Alias _ counter' _)) ->
-                Linear.do Ur _ <- incCounter counter'; pure ()) (countedFields a)
-
   pure (Alias f counter a)
   where
     incCounter c = liftSystemIOU (Counter.add c 1)
@@ -47,14 +39,9 @@ inc = Unsafe.toLinear \(Alias f counter a) -> Linear.do
 -- those extra aliases should be ignored, not forgotten.)
 --
 -- You might be looking for 'get' and 'forget'
-dec :: (MonadIO m, Aliasable a) => Alias μ a ⊸ m (Ur a)
+dec :: MonadIO m => Alias μ a ⊸ m (Ur a)
 dec = Unsafe.toLinear \(Alias _ counter a) -> Linear.do
   Ur _ <- decCounter counter -- decrement reference count
-
-  -- We can forget the counted fields after decrementing them all
-  consume <$>
-    traverse' (Unsafe.toLinear \(SomeAlias (Alias _ counter' _)) ->
-                Linear.do Ur _ <- decCounter counter'; pure ()) (countedFields a)
   pure (Ur a)
   where
     decCounter c = liftSystemIOU (Counter.sub c 1)
