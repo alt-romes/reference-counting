@@ -64,7 +64,7 @@ library
                       Data.Linear.Alias.Unsafe
                       Data.Linear.Alias.Internal
 
-    build-depends:    base >= 4.17.0 && < 4.20,
+    build-depends:    base >= 4.17.0 && < 4.22,
                       linear-base >= 0.3 && < 0.5,
                       atomic-counter >= 0.1.2 && < 0.2,
 

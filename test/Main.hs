@@ -19,9 +19,6 @@ import qualified Data.Linear.Alias as A
 data SomeResource where
   UnsafeCreateResource :: Int -> SomeResource
 
-  deriving Generic
-  deriving anyclass A.Aliasable
-
 newResource :: Int %1 -> IO SomeResource
 freeResource :: SomeResource %1 -> IO ()
 
