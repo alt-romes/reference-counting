@@ -69,7 +69,7 @@ library
                       atomic-counter >= 0.1.2 && < 0.2,
 
                       -- only for instances of Aliasable
-                      containers >= 0.6 && < 0.7,
+                      containers >= 0.6 && < 0.8,
 
     hs-source-dirs:   src
     default-language: GHC2021
