@@ -47,7 +47,6 @@ newAlias freeC x = Linear.do
   Ur c <- liftSystemIOU $ Counter.new 1
   pure $ Alias freeC c x
 
-
 -- | This function returns a value that is aliased in a linear pair with a
 -- function to free the linear value. Since both the value and freeing function
 -- must be consumed linearly, it is guaranteed that the returned function is
@@ -112,6 +111,7 @@ useM (Alias freeC counter x) f = f x >>= \(a,b) -> pure (Alias freeC counter a, 
 hoist :: MonadIO m => ((a ⊸ m ()) ⊸ b ⊸ μ ()) ⊸ (a ⊸ b) ⊸ Alias m a ⊸ Alias μ b
 hoist freeAB f (Alias freeA counter x) = Alias (freeAB freeA) counter (f x)
 
+{-# INLINABLE get #-}
 
 ----- Signature classes -----
 
@@ -135,6 +135,7 @@ instance Forgettable μ (Alias μ a) where
        else
          -- No-op
          pure (Unsafe.toLinear (\_ -> ()) x)
+  {-# INLINE forget #-} -- this was showing up in profiles
 
 class Shareable m a where
   -- | Share a linear resource
@@ -170,6 +171,7 @@ instance Shareable m (Alias μ a) where
     -- Implement manually since there is no Generic instance for Alias
     alias' <- Unsafe.Alias.inc alias'' 
     pure $ Unsafe.toLinear (\alias -> (alias, alias)) alias'
+  {-# INLINE share #-} -- this was showing up in profiles
 
 instance (Generic a, Fields (Rep a)) => Shareable m (Generically a) where
   share = Unsafe.toLinear $ \(Generically x) -> Linear.do
@@ -238,6 +240,8 @@ instance Shareable m a => Shareable m [a] where
 
 instance Forgettable m Int where
   forget = pure . consume
+  {-# INLINE forget #-}
 instance Shareable m Int where
   share = pure . dup2
+  {-# INLINE share #-}
 

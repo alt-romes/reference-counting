@@ -42,3 +42,7 @@ dec = Unsafe.toLinear \(Alias _ counter a) -> Linear.do
 get :: Alias m' a -> a
 get (Alias _ _ a) = a
 
+-- We always want MonadIO to specialise here.
+-- (This showed up in ghengin profiles!)
+{-# INLINEABLE inc #-}
+{-# INLINEABLE dec #-}
