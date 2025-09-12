@@ -43,7 +43,7 @@ newAlias :: MonadIO m
     => (a ⊸ μ ()) -- ^ Function to free resource when the last alias is released
      ⊸ a          -- ^ The resource to alias
      ⊸ m (Alias μ a)
-newAlias freeC x = Linear.do
+newAlias = Unsafe.toLinear \freeC x -> Linear.do
   Ur c <- liftSystemIOU $ Counter.new 1
   pure $ Alias freeC c x
 
@@ -109,7 +109,7 @@ useM (Alias freeC counter x) f = f x >>= \(a,b) -> pure (Alias freeC counter a, 
 
 
 hoist :: MonadIO m => ((a ⊸ m ()) ⊸ b ⊸ μ ()) ⊸ (a ⊸ b) ⊸ Alias m a ⊸ Alias μ b
-hoist freeAB f (Alias freeA counter x) = Alias (freeAB freeA) counter (f x)
+hoist = Unsafe.toLinear \freeAB f (Alias freeA counter x) -> Alias (freeAB freeA) counter (f x)
 
 {-# INLINABLE get #-}
 
@@ -156,7 +156,7 @@ class Shareable m a where
     consume <$>
       traverse' (\(SomeAlias alias) -> Linear.do
         a' <- Unsafe.Alias.inc alias -- increment reference count
-        Unsafe.toLinear const (pure ()) a') (countedFields x)
+        Unsafe.toLinear2 const (pure ()) a') (countedFields x)
 
     -- It's safe to return two references to the pointer because we've
     -- incremented the reference count of all nested aliases. Both references must be used
@@ -179,7 +179,7 @@ instance (Generic a, Fields (Rep a)) => Shareable m (Generically a) where
     consume <$>
       traverse' (\(SomeAlias alias) -> Linear.do
         a' <- Unsafe.Alias.inc alias -- increment reference count
-        Unsafe.toLinear const (pure ()) a') (countedFields x)
+        Unsafe.toLinear2 const (pure ()) a') (countedFields x)
     return (Generically x, Generically x)
 
 -- Just like 'share', but doesn't require the action to be performed whithin
@@ -215,7 +215,7 @@ instance (Forgettable m a, Forgettable m b, Forgettable m c) => Forgettable m (a
   {-# INLINE forget #-}
 
 instance Forgettable m a => Forgettable m (IM.IntMap a) where
-  forget im = consume <$> traverse' forget (IM.elems im)
+  forget im = consume <$> traverse' forget (Unsafe.toLinear IM.elems im)
   {-# INLINE forget #-}
 
 instance Forgettable m a => Forgettable m [a] where
@@ -231,7 +231,7 @@ instance (Shareable m a, Shareable m b) => Shareable m (a,b) where
 
 instance Shareable m a => Shareable m (IM.IntMap a) where
   share im = B.bimap (Unsafe.toLinear IM.fromList) (Unsafe.toLinear IM.fromList) . unzip <$>
-             traverse' share (IM.toList im)
+             traverse' share (Unsafe.toLinear IM.toList im)
   {-# INLINE share #-}
 
 instance Shareable m a => Shareable m [a] where
