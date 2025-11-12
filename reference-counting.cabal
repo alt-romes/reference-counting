@@ -20,7 +20,7 @@ name:               reference-counting
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.1.0.0
+version:            0.2.0.0
 
 -- A short (one-line) description of the package.
 synopsis: A reference counting library to alias linear resources
@@ -44,7 +44,7 @@ maintainer:         rodrigo.m.mesquita@gmail.com
 
 category:           Data
 build-type:         Simple
-tested-with:        GHC ==9.8.2, GHC ==9.10.1
+tested-with:        GHC ==9.12.2
 
 extra-doc-files:    CHANGELOG.md
                     README.md
